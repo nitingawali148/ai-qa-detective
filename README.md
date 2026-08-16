@@ -155,7 +155,7 @@ npm run test    # runs server tests (vitest+supertest) and client tests (vitest+
 6. Open **Release Risk** → score, risk level, top risks, and the NO-GO recommendation driven by the seeded + newly analyzed failures.
 7. Try **Presentation Mode** for a one-screen summary suitable for a live demo audience.
 
-The **Load Sample ▾** dropdown on Analyze Failure also has five more realistic scenarios (auth service down, API timeout, price miscalculation, flaky UI wait, broken locator) covering the full failure taxonomy.
+The **Load Sample ▾** dropdown on Analyze Failure also has five more realistic scenarios (auth service down, API timeout, price miscalculation, flaky UI wait, broken locator) covering the full failure taxonomy. All demo/seed data belongs to **ShopSphere**, a fictional e-commerce app built specifically for this project — see **[docs/shopsphere/](docs/shopsphere/)** for its modules and every scenario in detail.
 
 ## Screenshots
 
@@ -174,6 +174,7 @@ The **Load Sample ▾** dropdown on Analyze Failure also has five more realistic
 ## Additional Documentation
 
 - **[flow.md](flow.md)** — a step-by-step walkthrough of the whole system with sequence/flow diagrams and real example data, for anyone new to the codebase.
+- **[docs/shopsphere/](docs/shopsphere/)** — everything about ShopSphere, the fictional e-commerce app used throughout the demo/seed data: its modules, every seeded failure scenario, and how to extend it.
 
 ### AI Architecture
 
