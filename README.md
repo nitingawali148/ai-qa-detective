@@ -181,6 +181,8 @@ The **Load Sample ▾** dropdown on Analyze Failure has 11 more scenarios beyond
 - **[docs/shopsphere/](docs/shopsphere/)** — everything about ShopSphere, the fictional e-commerce app used throughout the demo/seed data: its modules, every seeded failure scenario, and how to extend it.
 - **[test-data/](test-data/)** — 6 additional "Load Sample" scenarios spanning 5 different fictional companies/industries (banking, warehouse logistics, ride-hailing, healthcare), including the scenario that proves the AI can tell a real application defect apart from a broken test locator.
 - **[DEPLOYMENT.md](DEPLOYMENT.md)** — step-by-step guide to deploying the frontend to Vercel and the backend to Render.
+- **[PROMPT.md](PROMPT.md)** — a standalone, from-scratch specification of the entire project, detailed enough to rebuild it from an empty repo.
+- **[presentation/](presentation/)** — the source for a 12-slide case-file-styled presentation deck; run `node presentation/build.mjs` to regenerate `presentation.html`.
 
 ### AI Architecture
 
