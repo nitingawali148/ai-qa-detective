@@ -11,3 +11,5 @@ data/*.json
 !data/.gitkeep
 .claude/
 presentation/presentation.html
+presentation/slides/
+presentation/*.pptx
