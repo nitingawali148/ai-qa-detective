@@ -2,6 +2,7 @@
   "name": "ai-qa-detective",
   "private": true,
   "version": "1.0.0",
+  "type": "module",
   "description": "AI QA Detective - AI-powered test failure analysis and root cause agent",
   "workspaces": [
     "client",
