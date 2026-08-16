@@ -61,10 +61,48 @@ For the full mechanism — what calls what, and the actual data at each step —
 
 ## Tech Stack
 
-**Frontend:** React 18, TypeScript, Vite, Tailwind CSS, Recharts, React Router
-**Backend:** Node.js, Express, TypeScript, Zod
-**AI:** Configurable `LLMProvider` abstraction — Anthropic Claude, OpenAI, or a deterministic rule-based Mock provider (no API key needed)
-**Testing:** Vitest + Supertest (backend), Vitest + React Testing Library (frontend)
+### Frontend (`client/`)
+
+| Layer | Technology |
+|---|---|
+| Framework | React 18.3 |
+| Language | TypeScript 5.7 |
+| Build tool | Vite 5.4 |
+| Styling | Tailwind CSS 3.4 + PostCSS/Autoprefixer |
+| Routing | React Router 6.28 |
+| Charts | Recharts 2.13 |
+| Utilities | clsx |
+| Testing | Vitest 2.1 + React Testing Library 16 + jsdom |
+
+### Backend (`server/`)
+
+| Layer | Technology |
+|---|---|
+| Runtime | Node.js |
+| Framework | Express 4.21 |
+| Language | TypeScript 5.7 (ESM, `moduleResolution: Bundler`) |
+| Validation | Zod 3.23 |
+| AI SDKs | `@anthropic-ai/sdk` 0.32, `openai` 4.73 |
+| Utilities | `nanoid` 5, `dotenv` 16, `cors` |
+| Dev runner | `tsx` (watch mode) |
+| Testing | Vitest 2.1 + Supertest 7 |
+
+### AI Architecture
+
+- Custom **`LLMProvider`** abstraction with three interchangeable implementations: **Anthropic Claude**, **OpenAI**, and a **deterministic rule-based Mock** provider (10 classification rules) — so the app runs fully offline with zero API keys.
+- Structured outputs validated with **Zod** on every AI call, with one automatic retry on invalid JSON.
+
+### Monorepo & Tooling
+
+- **npm workspaces** (`client`, `server`) + `concurrently` to run both dev servers together
+- Root `"type": "module"` throughout (ESM end-to-end)
+
+### Deployment
+
+- **Vercel** — single project serving both the static frontend (`client/dist`) and the backend as **one Node.js serverless function** (`api/index.js` wrapping the Express app), routed via `vercel.json` rewrites — no separate backend host, no CORS needed
+- Alternative documented path: Vercel (frontend) + **Render** (backend, always-on Node process) for cases needing persistent in-memory state — see [DEPLOYMENT.md](DEPLOYMENT.md)
+
+### Architecture Diagram
 
 ```mermaid
 flowchart TB
