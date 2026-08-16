@@ -175,6 +175,7 @@ The **Load Sample ▾** dropdown on Analyze Failure also has five more realistic
 
 - **[flow.md](flow.md)** — a step-by-step walkthrough of the whole system with sequence/flow diagrams and real example data, for anyone new to the codebase.
 - **[docs/shopsphere/](docs/shopsphere/)** — everything about ShopSphere, the fictional e-commerce app used throughout the demo/seed data: its modules, every seeded failure scenario, and how to extend it.
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** — step-by-step guide to deploying the frontend to Vercel and the backend to Render.
 
 ### AI Architecture
 

@@ -14,7 +14,10 @@ import { llmProvider } from "./ai/llm-provider.js";
 export function createApp() {
   const app = express();
 
-  app.use(cors());
+  // CORS_ORIGIN restricts allowed origins in production (e.g. your deployed Vercel URL).
+  // Left unset, all origins are allowed — convenient for local dev and quick deploys.
+  const corsOrigin = process.env.CORS_ORIGIN;
+  app.use(cors(corsOrigin ? { origin: corsOrigin.split(",").map((o) => o.trim()) } : undefined));
   // Screenshots arrive as base64 JSON — raise the default body limit to accommodate them.
   app.use(express.json({ limit: "15mb" }));
 
