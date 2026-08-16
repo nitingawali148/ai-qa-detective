@@ -4,6 +4,8 @@
 
 *From failed test to root cause in seconds.*
 
+🔗 **Live Demo: [https://ai-qa-detective-client-y1m3.vercel.app/](https://ai-qa-detective-client-y1m3.vercel.app/)**
+
 ---
 
 ## Table of Contents
@@ -146,6 +148,8 @@ npm run test    # runs server tests (vitest+supertest) and client tests (vitest+
 ```
 
 ## Demo
+
+Try it live: **[https://ai-qa-detective-client-y1m3.vercel.app/](https://ai-qa-detective-client-y1m3.vercel.app/)** — no setup required, runs in Mock AI mode with zero API keys.
 
 1. Open the app → **Dashboard** shows seeded metrics and release risk.
 2. Go to **Analyze Failure** → click **Load Demo Failure** (a ShopSphere checkout/payment failure with HTTP 500 + NullPointerException logs is loaded instantly).
