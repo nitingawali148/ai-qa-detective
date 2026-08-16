@@ -253,6 +253,94 @@ const databaseConnectionRefusedRule: Rule = (ctx) => {
   };
 };
 
+/**
+ * A setting is wrong, not the code or the infrastructure: a feature flag,
+ * environment variable, endpoint, or credential mode pointed somewhere
+ * unintended. Distinct from databaseConnectionRefusedRule (infra literally
+ * unreachable) — here the connection/request succeeds, but against the
+ * wrong target or with the wrong mode.
+ */
+const configurationIssueRule: Rule = (ctx) => {
+  const hit =
+    /(feature flag|environment variable|misconfigured|wrong endpoint|incorrect endpoint|pointing to (the )?wrong|sandbox mode|live mode credentials|invalid configuration|configuration value|configured timeout of \d+\s?ms)/i.test(
+      ctx.combined
+    );
+  if (!hit) return null;
+
+  const lines = findLines(ctx, /feature flag|environment variable|misconfigured|endpoint|sandbox|live mode|configuration|configured timeout/i);
+  return {
+    failure_summary: "The failure traces to a misconfigured setting, not a code defect or unreachable infrastructure.",
+    root_cause: "A configuration value (feature flag, environment variable, endpoint, or credential mode) was set incorrectly for this environment, causing the observed failure even though the underlying code and infrastructure are working correctly.",
+    root_cause_category: "Configuration Issue",
+    severity: "Medium",
+    priority: "P3",
+    confidence: 78,
+    confidence_rationale:
+      "The evidence explicitly names a configuration setting (flag/variable/endpoint/mode) as the point of failure, distinguishing it from both a code defect and an infrastructure outage — confidence is not higher only because the correct intended value isn't confirmed in the evidence.",
+    is_flaky: false,
+    environment_issue: false,
+    application_defect: false,
+    evidence: evidenceFrom(lines, "log", "Configuration Value"),
+    why_ai_thinks_this: [
+      "The failure is explicitly tied to a named configuration setting, not a stack trace or connectivity error.",
+      "No application exception or infrastructure-down signal accompanies the failure.",
+      "This matches the classic profile of an environment/config mismatch (right code, right infra, wrong setting).",
+    ],
+    recommended_actions: [
+      "Verify the setting's intended value for this environment against the deployment/config management source of truth.",
+      "Add a startup-time validation check that fails fast on an unexpected configuration value.",
+      "Add this configuration combination to environment provisioning checklists to prevent recurrence.",
+    ],
+    developer_hint: "No code change is evidenced as necessary — correct the configuration value for this environment first.",
+    test_recommendation: "Add a smoke test that asserts critical configuration values (endpoints, flags, credential mode) at suite startup, before functional tests run.",
+    business_impact: "Impact scales with what the setting controls — verify whether this also affects other environments sharing the same misconfiguration.",
+    insufficient_evidence: false,
+  };
+};
+
+/**
+ * The application and environment are both fine — the DATA is wrong:
+ * duplicates, missing/deleted test data, broken references, or stale/
+ * out-of-sync seed data.
+ */
+const dataIssueRule: Rule = (ctx) => {
+  const hit =
+    /(duplicate (record|entry|customer|key)|referential integrity|orphaned (record|reference)|stale (test|seed) data|seed data (mismatch|out of sync)|test data (was |is )?(deleted|missing|not found)|row count mismatch|data (loss|integrity) (issue|failure)?)/i.test(
+      ctx.combined
+    );
+  if (!hit) return null;
+
+  const lines = findLines(ctx, /duplicate|referential integrity|orphaned|stale (test|seed) data|seed data|test data|row count|data (loss|integrity)/i);
+  return {
+    failure_summary: "The failure traces back to the state of the test data itself, not application logic or infrastructure.",
+    root_cause: "The underlying data was duplicated, missing, orphaned, or out of sync with what the test expected — the application handled the request correctly given the data it was given.",
+    root_cause_category: "Data Issue",
+    severity: "Medium",
+    priority: "P3",
+    confidence: 76,
+    confidence_rationale:
+      "The evidence explicitly identifies a data-state problem (duplicate/missing/orphaned/stale) rather than an application exception or connectivity failure, but confirming whether this is a one-off seeding mistake or a systemic data-integrity gap would need a database audit.",
+    is_flaky: false,
+    environment_issue: false,
+    application_defect: false,
+    evidence: evidenceFrom(lines, "log", "Data State"),
+    why_ai_thinks_this: [
+      "The failure explicitly names a data-integrity condition (duplicate, orphaned, missing, or stale), not a code exception.",
+      "No application stack trace or infrastructure-down signal is present.",
+      "The application's behavior is consistent with correctly processing whatever data state it was given.",
+    ],
+    recommended_actions: [
+      "Audit the affected record(s) and correct or remove the inconsistent data.",
+      "Add a data-integrity check (unique constraint, foreign key, or validation job) to prevent this state from recurring.",
+      "Re-seed or refresh test data before the next run rather than reusing potentially stale fixtures.",
+    ],
+    developer_hint: "No application code defect is evidenced — fix or refresh the underlying data before investigating further.",
+    test_recommendation: "Isolate test data per run (unique fixtures per test) instead of sharing mutable seed data across runs.",
+    business_impact: "Low if isolated to test data; escalate to a data-integrity review if the same pattern is observed in production data.",
+    insufficient_evidence: false,
+  };
+};
+
 const apiTimeoutRule: Rule = (ctx) => {
   const timeoutHit = /(timed?\s?out|timeout)/i.test(ctx.combined);
   const apiHit = /(search|\/api\/|request)/i.test(ctx.combined);
@@ -452,6 +540,8 @@ const RULES: Rule[] = [
   authServiceUnavailableRule,
   authUnauthorizedAmbiguousRule,
   databaseConnectionRefusedRule,
+  configurationIssueRule,
+  dataIssueRule,
   priceCalculationRule,
   businessLogicMismatchRule,
   apiTimeoutRule,

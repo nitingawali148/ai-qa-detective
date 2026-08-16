@@ -1,8 +1,27 @@
 # Test Data — Cross-Industry Sample Failures
 
-This folder documents 6 additional "Load Sample" scenarios for AI QA Detective, spanning **5 different fictional companies** across different industries — not just [ShopSphere](../docs/shopsphere/) (see that folder for the ShopSphere-specific scenarios and seeded history). They exist to exercise failure signatures the ShopSphere-only set doesn't cover, and to demonstrate that the AI's classification is driven by evidence patterns, not by memorizing one company's logs.
+This folder documents the additional "Load Sample" scenarios for AI QA Detective, on top of the [ShopSphere](../docs/shopsphere/)-only set — **25 scenarios total** here, spanning **6 fictional companies** and every failure category, so the classification logic proves itself against genuinely different evidence rather than memorizing one company's logs.
 
-All 6 are wired into the app: they're in `server/src/data/sampleFailures.ts`'s `sampleScenarios` object and appear automatically in the **Load Sample ▾** dropdown on the Analyze Failure page (the dropdown is populated dynamically from that object — adding an entry there is the only code change needed to add a new one to the UI).
+All of them are wired into the app: they're in `server/src/data/sampleFailures.ts`'s `sampleScenarios` object and appear automatically in the **Load Sample ▾** dropdown on the Analyze Failure page (the dropdown is populated dynamically from that object — adding an entry there is the only code change needed to add a new one to the UI), with a **Filter by Category** control to jump straight to a specific classification.
+
+Every scenario in this folder — all 25 — was verified against the actual mock rule engine (`server/src/ai/mock-analyzer.ts`) before being documented, not just hand-classified: `server/tests/mock-analyzer.test.ts` runs each one through the real engine and fails loudly if a future rule change ever shifts its classification.
+
+## Category coverage
+
+Combined with the 6 ShopSphere-only scenarios in [docs/shopsphere/](../docs/shopsphere/), every one of the 6 failure categories now has **at least 5 sample scenarios** (31 total across both folders):
+
+| Category | Count | Scenarios |
+|---|---|---|
+| Application Defect | 5 | `payment`, `cart`, `ecommercePaymentAdvanced`, `bankingLoginFailure`, `rideBookingLogicFailure` |
+| Environment Issue | 6 | `login`, `productSearch`, `warehouseInventoryTimeout`, `healthcareDatabaseFailure`, `performanceLoadTest`, `databaseQueryPerformanceDegradation` |
+| Test Automation Issue | 5 | `automation`, `playwrightAutomationFailure`, `mobileLocatorBroken`, `brokenCssSelector`, `brittleXpathBroken` |
+| Flaky Test | 5 | `flaky`, `staleElementRace`, `intermittentAnimationTiming`, `ciNetworkFlake`, `raceConditionAssertion` |
+| Configuration Issue | 5 | `featureFlagMisconfig`, `wrongApiEndpointMobile`, `dbConnectionStringWrongEnv`, `paymentGatewaySandboxMisconfig`, `timeoutConfigTooShort` |
+| Data Issue | 5 | `duplicateCustomerRecord`, `missingTestDataUserDeleted`, `orphanedOrderReference`, `staleSeedDataMismatch`, `dbMigrationDataLoss` |
+
+Configuration Issue and Data Issue previously had **zero** sample coverage — `configurationIssueRule` and `dataIssueRule` (in `mock-analyzer.ts`) were added specifically to give them real, verified classification logic rather than falling back to "insufficient evidence."
+
+## The original 6 (detailed write-ups below)
 
 | # | Scenario | Fictional Company | Expected Classification | Difficulty |
 |---|---|---|---|---|
@@ -14,8 +33,6 @@ All 6 are wired into the app: they're in `server/src/data/sampleFailures.ts`'s `
 | 6 | 🧪 Playwright — Automation Failure | ShopSphere | **Test Automation Issue** | 🔴 Important |
 
 **Scenario 6 is the most important one.** The API response explicitly confirms the order succeeded (`orderStatus: "CONFIRMED"`, `paymentStatus: "SUCCESS"`), but the UI automation timed out looking for the confirmation banner. A naive engine would see "test failed" and blame the application; AI QA Detective's mock rule engine specifically checks for this "backend succeeded, UI locator failed" combination and correctly attributes it to the automation, not the app — this is the clearest demonstration that the tool reasons about the *relationship* between pieces of evidence, not just their presence.
-
-Every scenario below was verified against the actual mock rule engine (`server/src/ai/mock-analyzer.ts`) — see `server/tests/mock-analyzer.test.ts` for the automated regression tests that lock in these classifications.
 
 ---
 
@@ -274,6 +291,61 @@ waiting for locator(".order-confirmation-banner")
 ```
 
 **AI verdict:** **Test Automation Issue** · Medium · P3 · 85% confidence — matched by `successApiButAutomationTimeoutRule`, which specifically requires both a confirmed-success signal *in the API response* and a UI element/locator timeout. Correctly does **not** flag this as an Application Defect, even though the test failed — because the backend evidence shows the operation actually succeeded.
+
+---
+
+## The 19 additional scenarios (Performance, Mobile, Database, and category-gap coverage)
+
+Full evidence for each lives in `server/src/data/sampleFailures.ts`; this table is a reference index rather than a repeat of every log line.
+
+### Performance & Database testing
+
+| Scenario key | Test | Company | Signature | Verdict |
+|---|---|---|---|---|
+| `performanceLoadTest` | Verify checkout API meets performance SLA under peak load | ShopSphere | k6 load test — p95 latency 8500ms vs. 2000ms SLA, 12% requests timed out | Environment Issue · High · P2 · 80% |
+| `databaseQueryPerformanceDegradation` | Verify inventory search returns within SLA | SmartWarehouse | Full table scan + N+1 query pattern, request timed out after 20s | Environment Issue · High · P2 · 80% |
+| `dbConnectionStringWrongEnv` | Verify staging environment uses staging database | MediCare Portal | `DATABASE_URL` misconfigured to point at production, not staging | Configuration Issue · Medium · P3 · 78% |
+| `duplicateCustomerRecord` | Verify new customer registration succeeds | ShopSphere | Leftover test record triggers a unique-constraint violation | Data Issue · Medium · P3 · 76% |
+| `orphanedOrderReference` | Verify order history displays product details | ShopSphere | Order references a deleted product ID (referential integrity) | Data Issue · Medium · P3 · 76% |
+| `dbMigrationDataLoss` | Verify database migration completes without data loss | MediCare Portal | Post-migration row count is 204 records lower than pre-migration | Data Issue · Medium · P3 · 76% |
+
+### Mobile testing
+
+| Scenario key | Test | Company | Signature | Verdict |
+|---|---|---|---|---|
+| `mobileLocatorBroken` | Verify user can add item to cart on mobile app | ShopSphere Mobile (Android/Appium) | `NoSuchElementException` after a UI redesign moved the Add to Cart button | Test Automation Issue · Medium · P3 · 82% |
+| `wrongApiEndpointMobile` | Verify mobile app connects to QA backend | ShopSphere Mobile (iOS/XCUITest) | `API_BASE_URL` env var misconfigured, app hit production instead of QA | Configuration Issue · Medium · P3 · 78% |
+
+### Test Automation Issue (locator/selector breakage)
+
+| Scenario key | Test | Company | Signature |
+|---|---|---|---|
+| `brokenCssSelector` | Verify promo code banner displays on cart page | ShopSphere | CSS class renamed in a frontend release; old selector no longer matches |
+| `brittleXpathBroken` | Verify transaction history loads | SecureBank Online | Absolute XPath broke after a dashboard layout change |
+
+### Flaky Test (timing/race conditions)
+
+| Scenario key | Test | Company | Signature |
+|---|---|---|---|
+| `staleElementRace` | Verify quantity selector updates cart total | ShopSphere | `StaleElementReferenceException` — DOM re-rendered mid-interaction |
+| `intermittentAnimationTiming` | Verify ride status updates in real time | QuickRide | Assertion ran mid-CSS-transition, element momentarily not visible |
+| `ciNetworkFlake` | Verify dashboard widgets load | SmartWarehouse | Timed out waiting for a widget on one CI run; passed on immediate retry |
+| `raceConditionAssertion` | Verify cart badge count updates immediately | ShopSphere | Assertion ran before the UI finished re-rendering the badge |
+
+### Configuration Issue (setting is wrong, not the code)
+
+| Scenario key | Test | Company | Signature |
+|---|---|---|---|
+| `featureFlagMisconfig` | Verify new checkout flow is enabled in QA | ShopSphere | `new-checkout-flow` feature flag left disabled in QA config |
+| `paymentGatewaySandboxMisconfig` | Verify payment gateway uses sandbox credentials in QA | SecureBank Online | Live-mode credentials configured instead of sandbox mode |
+| `timeoutConfigTooShort` | Verify API client timeout is configured correctly | SmartWarehouse | `HTTP_CLIENT_TIMEOUT_MS` set to 500 instead of 5000, causing spurious timeouts suite-wide |
+
+### Data Issue (data state is wrong, not the app)
+
+| Scenario key | Test | Company | Signature |
+|---|---|---|---|
+| `missingTestDataUserDeleted` | Verify user can log in with existing test account | SecureBank Online | Nightly cleanup job deleted the test account before the run |
+| `staleSeedDataMismatch` | Verify fare estimate matches confirmed fare | QuickRide | QA pricing seed data not refreshed after a production pricing update |
 
 ---
 

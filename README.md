@@ -197,7 +197,7 @@ Try it live: **[https://ai-qa-detective-client-y1m3.vercel.app/](https://ai-qa-d
 6. Open **Release Risk** → score, risk level, top risks, and the NO-GO recommendation driven by the seeded + newly analyzed failures.
 7. Try **Presentation Mode** for a one-screen summary suitable for a live demo audience.
 
-The **Load Sample ▾** dropdown on Analyze Failure has 11 more scenarios beyond the flagship demo — 5 more ShopSphere ones (auth service down, API timeout, price miscalculation, flaky UI wait, broken locator; see **[docs/shopsphere/](docs/shopsphere/)**) plus 6 cross-industry ones spanning banking, warehouse logistics, ride-hailing, and healthcare (see **[test-data/](test-data/)**) — covering the full failure taxonomy, including a scenario specifically designed to test whether the AI can tell a real application defect apart from a broken test locator. A **Filter by Category** control inside the dropdown narrows the list to a specific failure classification (e.g. jump straight to the one Flaky Test example) instead of scanning all 12 labels.
+The **Load Sample ▾** dropdown on Analyze Failure has 30 more scenarios beyond the flagship demo — 5 more ShopSphere ones (auth service down, API timeout, price miscalculation, flaky UI wait, broken locator; see **[docs/shopsphere/](docs/shopsphere/)**) plus 25 more spanning banking, warehouse logistics, ride-hailing, healthcare, and mobile (see **[test-data/](test-data/)**) — enough that **every one of the 6 failure categories has at least 5 examples**, including dedicated Performance, Mobile, and Database testing scenarios and the one that proves the AI can tell a real application defect apart from a broken test locator. A **Filter by Category** control inside the dropdown narrows the list of 31 total scenarios down to a specific failure classification (e.g. jump straight to a Configuration Issue or Data Issue example) instead of scanning every label.
 
 ## Screenshots
 
@@ -217,7 +217,7 @@ The **Load Sample ▾** dropdown on Analyze Failure has 11 more scenarios beyond
 
 - **[flow.md](flow.md)** — a step-by-step walkthrough of the whole system with sequence/flow diagrams and real example data, for anyone new to the codebase.
 - **[docs/shopsphere/](docs/shopsphere/)** — everything about ShopSphere, the fictional e-commerce app used throughout the demo/seed data: its modules, every seeded failure scenario, and how to extend it.
-- **[test-data/](test-data/)** — 6 additional "Load Sample" scenarios spanning 5 different fictional companies/industries (banking, warehouse logistics, ride-hailing, healthcare), including the scenario that proves the AI can tell a real application defect apart from a broken test locator.
+- **[test-data/](test-data/)** — 25 additional "Load Sample" scenarios spanning 6 different fictional companies/industries (banking, warehouse logistics, ride-hailing, healthcare, mobile) — including dedicated Performance/Mobile/Database testing examples, full Configuration Issue and Data Issue coverage, and the scenario that proves the AI can tell a real application defect apart from a broken test locator.
 - **[DEPLOYMENT.md](DEPLOYMENT.md)** — step-by-step guide to deploying the frontend to Vercel and the backend to Render.
 - **[PROMPT.md](PROMPT.md)** — a standalone, from-scratch specification of the entire project, detailed enough to rebuild it from an empty repo.
 - **[AI_QA_Detective_Presentation.pptx](AI_QA_Detective_Presentation.pptx)** — a ready-to-present slide deck covering the problem, solution, architecture, and live demo.

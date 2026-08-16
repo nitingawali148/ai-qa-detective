@@ -47,6 +47,9 @@ The **Payment** module (highlighted) is where the flagship "Load Demo Failure" s
 | Auth | `ShopSphere Auth` | Login and authentication tokens | `TC-AUTH-002` |
 | Account | `ShopSphere Account` | User profile, shipping addresses, order history | `TC-ACCOUNT-008`, `TC-ORDERS-004` |
 | Marketing | `ShopSphere Marketing` | Public-facing pricing/content pages | `TC-PRICING-002` |
+| Mobile | `ShopSphere Mobile` | Native Android/iOS app (Appium/XCUITest) | `TC-MOBILE-007`, `TC-MOBILE-014` |
+
+> Additional scenarios covering Performance, Configuration, and Data Issue categories — several ShopSphere-branded — live in **[test-data/](../../test-data/)** alongside the cross-industry set.
 
 ---
 
