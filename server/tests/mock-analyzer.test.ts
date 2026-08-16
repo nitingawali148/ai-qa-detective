@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { runMockAnalysis } from "../src/ai/mock-analyzer.js";
-import { sampleScenarios } from "../src/data/sampleFailures.js";
+import { sampleScenarios, SAMPLE_SCENARIO_CATEGORY } from "../src/data/sampleFailures.js";
 
 // Locks in the classification for every "Load Sample" scenario — both the
 // original ShopSphere set and the cross-industry set added later — so a
@@ -75,5 +75,23 @@ describe("mock rule engine — all sample scenarios classify as intended", () =>
     expect(r.root_cause_category).toBe("Test Automation Issue");
     expect(r.application_defect).toBe(false);
     expect(r.confidence).toBeGreaterThanOrEqual(80);
+  });
+});
+
+describe("SAMPLE_SCENARIO_CATEGORY stays in sync with the real engine", () => {
+  // Powers the "Filter by Category" picker on Analyze Failure. If a rule change
+  // ever shifts a sample scenario's classification, this fails loudly instead
+  // of letting the filter silently lie about what a scenario will produce.
+  for (const [key, expectedCategory] of Object.entries(SAMPLE_SCENARIO_CATEGORY)) {
+    it(`${key} -> ${expectedCategory}`, () => {
+      const scenario = sampleScenarios[key];
+      expect(scenario, `sampleScenarios is missing a "${key}" entry`).toBeTruthy();
+      const result = runMockAnalysis(scenario);
+      expect(result.root_cause_category).toBe(expectedCategory);
+    });
+  }
+
+  it("covers every entry in sampleScenarios (no scenario missing a category tag)", () => {
+    expect(Object.keys(SAMPLE_SCENARIO_CATEGORY).sort()).toEqual(Object.keys(sampleScenarios).sort());
   });
 });

@@ -7,6 +7,7 @@ import type {
   JiraCreateResult,
   JiraSettings,
   RegressionTest,
+  RootCauseCategory,
   StoredFailure,
   TestDetails,
   TestInfo,
@@ -58,9 +59,15 @@ export const api = {
   loadDemo: () => request<{ scenario: { testInfo: TestInfo; testDetails: TestDetails; evidence: EvidenceInputPayload } }>("/demo"),
 
   loadScenarios: () =>
-    request<{ scenarios: { key: string; label: string; application: string; scenario: { testInfo: TestInfo; testDetails: TestDetails; evidence: EvidenceInputPayload } }[] }>(
-      "/demo/scenarios"
-    ),
+    request<{
+      scenarios: {
+        key: string;
+        label: string;
+        application: string;
+        category: RootCauseCategory;
+        scenario: { testInfo: TestInfo; testDetails: TestDetails; evidence: EvidenceInputPayload };
+      }[];
+    }>("/demo/scenarios"),
 
   analyze: (payload: { testInfo: TestInfo; testDetails: TestDetails; evidence: EvidenceInputPayload }) =>
     request<AnalyzeResponse>("/analyze", { method: "POST", body: JSON.stringify(payload) }),

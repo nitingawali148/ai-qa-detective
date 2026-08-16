@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { demoScenario, sampleScenarios } from "../data/sampleFailures.js";
+import { demoScenario, sampleScenarios, SAMPLE_SCENARIO_CATEGORY } from "../data/sampleFailures.js";
 
 export const demoRouter = Router();
 
@@ -13,6 +13,7 @@ demoRouter.get("/scenarios", (_req, res) => {
       key,
       label: scenario.testInfo.testName,
       application: scenario.testInfo.application,
+      category: SAMPLE_SCENARIO_CATEGORY[key],
       scenario,
     })),
   });

@@ -197,7 +197,7 @@ Try it live: **[https://ai-qa-detective-client-y1m3.vercel.app/](https://ai-qa-d
 6. Open **Release Risk** → score, risk level, top risks, and the NO-GO recommendation driven by the seeded + newly analyzed failures.
 7. Try **Presentation Mode** for a one-screen summary suitable for a live demo audience.
 
-The **Load Sample ▾** dropdown on Analyze Failure has 11 more scenarios beyond the flagship demo — 5 more ShopSphere ones (auth service down, API timeout, price miscalculation, flaky UI wait, broken locator; see **[docs/shopsphere/](docs/shopsphere/)**) plus 6 cross-industry ones spanning banking, warehouse logistics, ride-hailing, and healthcare (see **[test-data/](test-data/)**) — covering the full failure taxonomy, including a scenario specifically designed to test whether the AI can tell a real application defect apart from a broken test locator.
+The **Load Sample ▾** dropdown on Analyze Failure has 11 more scenarios beyond the flagship demo — 5 more ShopSphere ones (auth service down, API timeout, price miscalculation, flaky UI wait, broken locator; see **[docs/shopsphere/](docs/shopsphere/)**) plus 6 cross-industry ones spanning banking, warehouse logistics, ride-hailing, and healthcare (see **[test-data/](test-data/)**) — covering the full failure taxonomy, including a scenario specifically designed to test whether the AI can tell a real application defect apart from a broken test locator. A **Filter by Category** control inside the dropdown narrows the list to a specific failure classification (e.g. jump straight to the one Flaky Test example) instead of scanning all 12 labels.
 
 ## Screenshots
 

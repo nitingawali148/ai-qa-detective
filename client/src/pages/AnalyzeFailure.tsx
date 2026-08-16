@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { AppShell } from "../components/layout/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card";
-import { FieldGroup, Input, Textarea } from "../components/ui/Field";
+import { FieldGroup, Input, Select, Textarea } from "../components/ui/Field";
+import { Badge, categoryTone } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { AnalysisAnimation } from "../components/AnalysisAnimation";
 import { ResultsPanel } from "../components/ResultsPanel";
@@ -10,7 +11,7 @@ import { RegressionTestsList } from "../components/RegressionTestsList";
 import { useAnalysis } from "../context/AnalysisContext";
 import { api, ApiError } from "../api/client";
 import { fileToBase64 } from "../lib/fileToBase64";
-import type { EvidenceInput, TestDetails, TestInfo } from "../types";
+import type { EvidenceInput, RootCauseCategory, TestDetails, TestInfo } from "../types";
 
 const EMPTY_TEST_INFO: TestInfo = {
   testName: "",
@@ -41,7 +42,10 @@ export function AnalyzeFailure() {
   const [animationDone, setAnimationDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [scenarios, setScenarios] = useState<{ key: string; label: string; application: string; scenario: any }[] | null>(null);
+  const [scenarios, setScenarios] = useState<{ key: string; label: string; application: string; category: RootCauseCategory; scenario: any }[] | null>(
+    null
+  );
+  const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [loadingDemo, setLoadingDemo] = useState(false);
 
   const [generatingDefect, setGeneratingDefect] = useState(false);
@@ -69,6 +73,7 @@ export function AnalyzeFailure() {
   const toggleScenarioPicker = async () => {
     if (scenarios) {
       setScenarios(null);
+      setCategoryFilter("");
       return;
     }
     try {
@@ -86,7 +91,11 @@ export function AnalyzeFailure() {
     setScreenshotName(null);
     setResult(null);
     setScenarios(null);
+    setCategoryFilter("");
   };
+
+  const scenarioCategories = scenarios ? Array.from(new Set(scenarios.map((s) => s.category))).sort() : [];
+  const visibleScenarios = scenarios ? scenarios.filter((s) => !categoryFilter || s.category === categoryFilter) : [];
 
   const handleScreenshotUpload = async (file: File | undefined) => {
     if (!file) return;
@@ -169,17 +178,36 @@ export function AnalyzeFailure() {
             </CardHeader>
             <CardContent>
               {scenarios && (
-                <div className="mb-4 rounded-lg border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
-                  {scenarios.map((s) => (
-                    <button
-                      key={s.key}
-                      onClick={() => applyScenario(s.scenario)}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-between"
-                    >
-                      <span className="text-slate-700 dark:text-slate-200">{s.label}</span>
-                      <span className="text-xs text-slate-400">{s.application}</span>
-                    </button>
-                  ))}
+                <div className="mb-4 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+                  <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2">
+                    <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 shrink-0">Filter by Category</span>
+                    <Select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="!py-1 text-xs">
+                      <option value="">All Categories ({scenarios.length})</option>
+                      {scenarioCategories.map((c) => (
+                        <option key={c} value={c}>
+                          {c} ({scenarios.filter((s) => s.category === c).length})
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-72 overflow-y-auto scrollbar-thin">
+                    {visibleScenarios.length === 0 && (
+                      <p className="px-3 py-4 text-xs text-slate-400 text-center">No sample scenarios in this category.</p>
+                    )}
+                    {visibleScenarios.map((s) => (
+                      <button
+                        key={s.key}
+                        onClick={() => applyScenario(s.scenario)}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-between gap-2"
+                      >
+                        <span className="text-slate-700 dark:text-slate-200 truncate">{s.label}</span>
+                        <span className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-xs text-slate-400">{s.application}</span>
+                          <Badge tone={categoryTone(s.category)}>{s.category}</Badge>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-3">

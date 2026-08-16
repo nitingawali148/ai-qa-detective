@@ -482,6 +482,29 @@ Call log:
   },
 };
 
+/**
+ * The failure category each sample scenario classifies to when run through the
+ * mock rule engine — used only to power the "Filter by Category" picker on the
+ * Analyze Failure page, so a judge/tester can jump straight to e.g. a Flaky Test
+ * example instead of reading all 12 labels. Verified against the real engine
+ * output in server/tests/mock-analyzer.test.ts; keep this in sync if a rule's
+ * classification for one of these scenarios ever changes.
+ */
+export const SAMPLE_SCENARIO_CATEGORY: Record<string, FailureAnalysis["root_cause_category"]> = {
+  payment: "Application Defect",
+  login: "Environment Issue",
+  productSearch: "Environment Issue",
+  cart: "Application Defect",
+  flaky: "Flaky Test",
+  automation: "Test Automation Issue",
+  ecommercePaymentAdvanced: "Application Defect",
+  bankingLoginFailure: "Application Defect",
+  warehouseInventoryTimeout: "Environment Issue",
+  rideBookingLogicFailure: "Application Defect",
+  healthcareDatabaseFailure: "Environment Issue",
+  playwrightAutomationFailure: "Test Automation Issue",
+};
+
 function analysisFor(
   summary: string,
   rootCause: string,
