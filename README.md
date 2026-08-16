@@ -67,20 +67,20 @@ For the full mechanism — what calls what, and the actual data at each step —
 ```mermaid
 flowchart TB
     subgraph Client["React + TypeScript + Vite (client/)"]
-        UI[Pages: Dashboard, Analyze Failure,\nHistory, Test Generator, Release Risk,\nJira Defects, Settings, Presentation]
-        CTX[Analysis Context]
-        API_CLIENT[API Client]
+        UI["Pages: Dashboard, Analyze Failure,\nHistory, Test Generator, Release Risk,\nJira Defects, Settings, Presentation"]
+        CTX["Analysis Context"]
+        API_CLIENT["API Client"]
         UI --> CTX
         UI --> API_CLIENT
     end
 
     subgraph Server["Node.js + Express + TypeScript (server/)"]
-        ROUTES[Routes: analyze, defect, tests,\nrisk, history, jira, chat, demo, dashboard]
-        SCHEMAS[Zod Schemas\nvalidate every AI response]
-        AI[AI Services\nfailure-analyzer, defect-generator,\ntest-generator, risk-analyzer,\nchat-assistant, similarity]
-        PROVIDER[LLMProvider abstraction]
-        STORE[In-memory Failure Store\nseeded with sample history]
-        JIRA[Jira Client\nreal API or mock flow]
+        ROUTES["Routes: analyze, defect, tests,\nrisk, history, jira, chat, demo, dashboard"]
+        SCHEMAS["Zod Schemas\nvalidate every AI response"]
+        AI["AI Services\nfailure-analyzer, defect-generator,\ntest-generator, risk-analyzer,\nchat-assistant, similarity"]
+        PROVIDER["LLMProvider abstraction"]
+        STORE["In-memory Failure Store\nseeded with sample history"]
+        JIRA["Jira Client\nreal API or mock flow"]
 
         ROUTES --> AI
         AI --> SCHEMAS
@@ -90,16 +90,16 @@ flowchart TB
     end
 
     subgraph LLMs["LLM Providers"]
-        CLAUDE[Anthropic Claude]
-        OPENAI[OpenAI]
-        MOCK[Rule-Based Mock\n(no API key required)]
+        CLAUDE["Anthropic Claude"]
+        OPENAI["OpenAI"]
+        MOCK["Rule-Based Mock\n(no API key required)"]
     end
 
-    API_CLIENT -->|REST /api/*| ROUTES
+    API_CLIENT -- "REST /api/*" --> ROUTES
     PROVIDER --> CLAUDE
     PROVIDER --> OPENAI
     PROVIDER --> MOCK
-    JIRA -->|REST API| JiraCloud[(Jira Cloud)]
+    JIRA -- "REST API" --> JiraCloud[("Jira Cloud")]
 ```
 
 ## How to Run
