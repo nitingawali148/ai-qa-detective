@@ -159,7 +159,7 @@ Try it live: **[https://ai-qa-detective-client-y1m3.vercel.app/](https://ai-qa-d
 6. Open **Release Risk** → score, risk level, top risks, and the NO-GO recommendation driven by the seeded + newly analyzed failures.
 7. Try **Presentation Mode** for a one-screen summary suitable for a live demo audience.
 
-The **Load Sample ▾** dropdown on Analyze Failure also has five more realistic scenarios (auth service down, API timeout, price miscalculation, flaky UI wait, broken locator) covering the full failure taxonomy. All demo/seed data belongs to **ShopSphere**, a fictional e-commerce app built specifically for this project — see **[docs/shopsphere/](docs/shopsphere/)** for its modules and every scenario in detail.
+The **Load Sample ▾** dropdown on Analyze Failure has 11 more scenarios beyond the flagship demo — 5 more ShopSphere ones (auth service down, API timeout, price miscalculation, flaky UI wait, broken locator; see **[docs/shopsphere/](docs/shopsphere/)**) plus 6 cross-industry ones spanning banking, warehouse logistics, ride-hailing, and healthcare (see **[test-data/](test-data/)**) — covering the full failure taxonomy, including a scenario specifically designed to test whether the AI can tell a real application defect apart from a broken test locator.
 
 ## Screenshots
 
@@ -179,6 +179,7 @@ The **Load Sample ▾** dropdown on Analyze Failure also has five more realistic
 
 - **[flow.md](flow.md)** — a step-by-step walkthrough of the whole system with sequence/flow diagrams and real example data, for anyone new to the codebase.
 - **[docs/shopsphere/](docs/shopsphere/)** — everything about ShopSphere, the fictional e-commerce app used throughout the demo/seed data: its modules, every seeded failure scenario, and how to extend it.
+- **[test-data/](test-data/)** — 6 additional "Load Sample" scenarios spanning 5 different fictional companies/industries (banking, warehouse logistics, ride-hailing, healthcare), including the scenario that proves the AI can tell a real application defect apart from a broken test locator.
 - **[DEPLOYMENT.md](DEPLOYMENT.md)** — step-by-step guide to deploying the frontend to Vercel and the backend to Render.
 
 ### AI Architecture

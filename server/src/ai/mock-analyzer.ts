@@ -85,6 +85,55 @@ const paymentNullPointerRule: Rule = (ctx) => {
   };
 };
 
+/**
+ * Detects the "API confirms success, but UI automation timed out" signature —
+ * the most important distinction this engine can make: a passing backend
+ * result plus a locator/wait failure points at the TEST, not the app.
+ * Scoped specifically to evidence.apiResponse (not the full combined text) so
+ * an unrelated log line like "order submitted successfully" elsewhere never
+ * triggers this by accident.
+ */
+const successApiButAutomationTimeoutRule: Rule = (ctx) => {
+  const successHit = /(paymentstatus"?\s*:\s*"?success|"?status"?\s*:\s*"?confirmed|(submitted|created) successfully)/i.test(ctx.apiResponse);
+  const uiTimeoutHit = /(timeout|timed out).{0,40}(locator|element|banner|confirmation)|waiting for (locator|element|banner|confirmation)/i.test(ctx.combined);
+  if (!(successHit && uiTimeoutHit)) return null;
+
+  const successLines = findLines(ctx, /success|confirmed|submitted successfully|created successfully/i);
+  const timeoutLines = findLines(ctx, /timeout|timed out|waiting for/i);
+
+  return {
+    failure_summary: "The backend confirms the operation succeeded, but the UI automation could not find the expected confirmation element — a likely automation issue, not an application defect.",
+    root_cause: "The API response confirms the order/operation completed successfully, but the test's locator for the confirmation element timed out. This points to a synchronization or selector issue in the automation, not a backend failure.",
+    root_cause_category: "Test Automation Issue",
+    severity: "Medium",
+    priority: "P3",
+    confidence: 85,
+    confidence_rationale:
+      "The API response explicitly confirms success, while the only failure signal is a UI element timeout — this combination strongly indicates the automation's locator or wait strategy is the problem, not the application.",
+    is_flaky: true,
+    environment_issue: false,
+    application_defect: false,
+    evidence: [
+      ...evidenceFrom(successLines, "api_response", "Backend Confirms Success"),
+      ...evidenceFrom(timeoutLines, "log", "UI Element Timeout"),
+    ],
+    why_ai_thinks_this: [
+      "The API response shows the underlying operation (order/payment) completed successfully.",
+      "The only failure is the automation timing out waiting for a UI element — no application error is present.",
+      "This is a classic signature of a broken/changed selector or a race condition between the UI render and the test's wait, not a backend defect.",
+    ],
+    recommended_actions: [
+      "Verify the confirmation element's selector still matches the current UI markup.",
+      "Replace fixed timeouts with an explicit wait on a reliable signal (e.g. network idle or a data-testid element).",
+      "Re-run the test a few times to confirm this is consistently a locator issue and not a genuine UI regression.",
+    ],
+    developer_hint: "No backend code is implicated by this evidence — investigate the automation's selector/wait strategy for the confirmation element first.",
+    test_recommendation: "Add a data-testid to the confirmation element if one doesn't exist, and assert against a more resilient locator instead of a fixed timeout.",
+    business_impact: "Low direct business impact if the underlying transaction succeeded — but this masks real automation reliability issues that should be fixed to keep the suite trustworthy.",
+    insufficient_evidence: false,
+  };
+};
+
 const authServiceUnavailableRule: Rule = (ctx) => {
   const authHit = /auth(entication)?\s?(service|server)/i.test(ctx.combined);
   const downHit = /(unavailable|timed?\s?out|connection refused|econnrefused|503|down|not reachable)/i.test(ctx.combined);
@@ -121,10 +170,96 @@ const authServiceUnavailableRule: Rule = (ctx) => {
   };
 };
 
+/**
+ * A 401/Unauthorized failure that does NOT show the auth *service* itself as
+ * unavailable (that's authServiceUnavailableRule's job). Deliberately modeled
+ * as a genuinely ambiguous case: the evidence rules out "test just needs a
+ * retry" but doesn't contain enough to confidently blame the app, the test
+ * data, or the environment — so confidence stays moderate and
+ * insufficient_evidence is set, rather than guessing.
+ */
+const authUnauthorizedAmbiguousRule: Rule = (ctx) => {
+  const has401 = /\b401\b|unauthorized|invalid authentication token/i.test(ctx.combined);
+  const hasAssertionOrToken = /assertionfailederror|invalid authentication token|auth_token_invalid/i.test(ctx.combined);
+  if (!(has401 && hasAssertionOrToken)) return null;
+
+  const lines = findLines(ctx, /401|unauthorized|invalid authentication token|assertionfailederror/i);
+  return {
+    failure_summary: "Login failed with HTTP 401 Unauthorized despite the test using credentials expected to be valid.",
+    root_cause:
+      "The authentication request was rejected (401 Unauthorized / invalid token). Based on the evidence alone, it is not possible to confidently determine whether this is caused by an application defect, expired/invalid test data, or an environment/configuration issue.",
+    root_cause_category: "Application Defect",
+    severity: "Medium",
+    priority: "P3",
+    confidence: 45,
+    confidence_rationale:
+      "A clear failure signature (401 + assertion failure) is present, but nothing in the evidence distinguishes an application bug from stale test credentials or an environment/configuration problem — confidence is deliberately kept moderate rather than guessing.",
+    is_flaky: false,
+    environment_issue: false,
+    application_defect: false,
+    evidence: evidenceFrom(lines, "api_response", "Authentication Rejected"),
+    why_ai_thinks_this: [
+      "The request explicitly failed authentication (401), ruling out a passing/flaky result.",
+      "No environment-down signal (connection refused, service unavailable, timeout) is present, so this may not be a pure infrastructure issue.",
+      "No application exception or stack trace pointing to a specific code defect is present either — the evidence is consistent with several different causes.",
+    ],
+    recommended_actions: [
+      "Confirm the test account's credentials/token are still valid and have not expired or been rotated.",
+      "Check the authentication service's server-side logs for the exact rejection reason at this timestamp.",
+      "Confirm the environment's auth configuration (client ID/secret, token issuer) matches what the test expects.",
+    ],
+    developer_hint: "Not enough evidence to point at specific code — rule out expired/invalid test credentials before treating this as an application defect.",
+    test_recommendation: "Re-run with freshly verified-valid credentials and attach the authentication service's server-side logs for the same timestamp.",
+    business_impact: "If this is a genuine application defect, it blocks all login — treat as high business impact until the cause is confirmed.",
+    insufficient_evidence: true,
+  };
+};
+
+/** Generic "service can't reach its database" signature — distinct from authServiceUnavailableRule, which is auth-specific. */
+const databaseConnectionRefusedRule: Rule = (ctx) => {
+  const dbWord = /(database|postgresql|jdbc|mysql|mongodb)/i.test(ctx.combined);
+  const refused = /(connection refused|could not (obtain|establish)|cannotgetjdbcconnection|econnrefused)/i.test(ctx.combined);
+  if (!(dbWord && refused)) return null;
+
+  const lines = findLines(ctx, /connection refused|jdbc|database|postgresql|503/i);
+  return {
+    failure_summary: "The service could not complete the request because it was unable to connect to its database.",
+    root_cause:
+      "The backend service failed to establish a connection to its database (connection refused), causing the request to fail with a service-unavailable response.",
+    root_cause_category: "Environment Issue",
+    severity: "Critical",
+    priority: "P1",
+    confidence: 87,
+    confidence_rationale:
+      "The evidence explicitly shows a database connection being refused at the infrastructure level, with no application logic executed after that point — a strong, unambiguous environment signal.",
+    is_flaky: false,
+    environment_issue: true,
+    application_defect: false,
+    evidence: evidenceFrom(lines, "stack_trace", "Database Connection Refused"),
+    why_ai_thinks_this: [
+      "The failure occurs while establishing a database connection, before any business logic runs.",
+      "The error is a connection-level exception (connection refused), not an application/business logic exception.",
+      "The API surfaced this as a 503 Service Unavailable, consistent with a downstream dependency being down.",
+    ],
+    recommended_actions: [
+      "Verify the database instance is running and reachable from the application's network.",
+      "Check the database connection pool configuration and credentials.",
+      "Confirm no firewall/security-group change blocked the connection.",
+    ],
+    developer_hint: "No application code defect is evidenced — confirm database availability and connectivity before investigating further.",
+    test_recommendation: "Add a pre-flight database health check before running dependent test suites, and retry-with-backoff for transient connectivity issues.",
+    business_impact: "Critical — this blocks all operations depending on the database until connectivity is restored.",
+    insufficient_evidence: false,
+  };
+};
+
 const apiTimeoutRule: Rule = (ctx) => {
   const timeoutHit = /(timed?\s?out|timeout)/i.test(ctx.combined);
   const apiHit = /(search|\/api\/|request)/i.test(ctx.combined);
-  const elementHit = /(element|locator|selector|waiting for)/i.test(ctx.combined);
+  // Narrowly scoped to UI-wait phrasing so it only excludes genuine element/locator
+  // waits — a generic phrase like "...while waiting for /api/search" (a network
+  // call, not a UI element) must NOT be excluded here.
+  const elementHit = /(waiting for (element|locator|selector)|element (was )?not visible|stale element)/i.test(ctx.combined);
   if (!(timeoutHit && apiHit) || elementHit) return null;
 
   const evidenceLines = findLines(ctx, /timed?\s?out|\/api\/|status/i);
@@ -194,6 +329,50 @@ const priceCalculationRule: Rule = (ctx) => {
     developer_hint: "Inspect the pricing/cart total calculation service for rounding or discount-order-of-operations issues.",
     test_recommendation: "Add data-driven tests covering multiple price/discount/tax combinations to pin down the exact miscalculation.",
     business_impact: "Incorrect pricing directly affects revenue and customer trust; should be prioritized before release.",
+    insufficient_evidence: false,
+  };
+};
+
+/**
+ * The "HTTP succeeded but the resulting business state is wrong" signature —
+ * e.g. a booking API returns 201 but the record never transitions out of a
+ * pending state. Distinct from priceCalculationRule (numeric/price fields
+ * specifically) and checked after it, so a price mismatch is still caught by
+ * the more specific rule first.
+ */
+const businessLogicMismatchRule: Rule = (ctx) => {
+  const expected = ctx.testDetails.expectedResult || "";
+  const actual = ctx.testDetails.actualResult || "";
+  const has2xx = /\b(200|201|202)\b/.test(ctx.combined);
+  const valuesDiffer = !!expected && !!actual && expected !== actual;
+  if (!(has2xx && valuesDiffer)) return null;
+
+  return {
+    failure_summary: "The API call succeeded, but the resulting business state does not match what was expected.",
+    root_cause: `The request completed with a success status code, but the resulting state is incorrect: expected "${expected}" but got "${actual}". This points to a business-logic defect in how the downstream workflow completes, not a failed API call.`,
+    root_cause_category: "Application Defect",
+    severity: "High",
+    priority: "P2",
+    confidence: 75,
+    confidence_rationale:
+      "The HTTP-success-but-wrong-business-state pattern is explicit and unambiguous, but the exact workflow step that failed to complete isn't directly visible in this evidence, so confidence stops short of the highest tier.",
+    is_flaky: false,
+    environment_issue: false,
+    application_defect: true,
+    evidence: [{ label: "Expected vs Actual State", detail: `Expected: ${expected} | Actual: ${actual}`, source: "test_data" }],
+    why_ai_thinks_this: [
+      "The API call itself succeeded (2xx), ruling out a request/connectivity failure.",
+      "The resulting state does not match what a successful operation should produce, indicating the workflow did not fully complete.",
+      "This is a business-logic defect signature: success at the transport layer, failure at the application layer.",
+    ],
+    recommended_actions: [
+      "Review the downstream workflow step(s) that should run after the initial success response.",
+      "Add logging/tracing around the step that transitions the state to its final expected value.",
+      "Add a regression test that explicitly waits for and asserts the final state, not just the initial response code.",
+    ],
+    developer_hint: "Investigate the service responsible for completing the workflow after the initial success response — the initial request handler itself is not implicated.",
+    test_recommendation: "Add polling or webhook-based assertions for the final state rather than asserting immediately after the initial response.",
+    business_impact: "Customers may believe the action succeeded when the workflow is actually incomplete — a poor and potentially costly user experience.",
     insufficient_evidence: false,
   };
 };
@@ -269,8 +448,12 @@ const locatorNotFoundRule: Rule = (ctx) => {
 
 const RULES: Rule[] = [
   paymentNullPointerRule,
+  successApiButAutomationTimeoutRule,
   authServiceUnavailableRule,
+  authUnauthorizedAmbiguousRule,
+  databaseConnectionRefusedRule,
   priceCalculationRule,
+  businessLogicMismatchRule,
   apiTimeoutRule,
   flakyElementTimeoutRule,
   locatorNotFoundRule,

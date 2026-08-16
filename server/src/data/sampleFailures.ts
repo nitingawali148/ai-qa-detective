@@ -179,6 +179,307 @@ Status: 503 Service Unavailable`,
       consoleLogs: "",
     },
   },
+
+  // ── Cross-industry scenarios (test-data/README.md) ──────────────────────
+  // Six additional scenarios spanning different fictional companies/domains,
+  // chosen to exercise failure signatures the ShopSphere-only set above
+  // doesn't cover — most notably #6, which pairs a successful API response
+  // with a UI automation timeout to test whether the AI correctly blames the
+  // test rather than the application.
+
+  ecommercePaymentAdvanced: {
+    testInfo: {
+      testName: "Verify checkout using credit card",
+      testId: "TC-CHECKOUT-014",
+      application: "ShopSphere E-Commerce",
+      environment: "QA",
+      browser: "Chrome",
+      buildVersion: "2026.08.16.142",
+      executionTime: new Date().toISOString(),
+    },
+    testDetails: {
+      description:
+        "Verify that a customer can successfully complete checkout using a valid credit card and receive an order confirmation after successful payment.",
+      steps:
+        "1. Login to ShopSphere with a valid customer account.\n2. Search for a product.\n3. Add the product to the shopping cart.\n4. Navigate to checkout.\n5. Enter valid shipping information.\n6. Select Credit Card as the payment method.\n7. Enter valid credit card details.\n8. Click the \"Place Order\" button.\n9. Verify that payment is processed successfully.\n10. Verify that the order confirmation is displayed.",
+      expectedResult: "Payment should be processed successfully and the customer should see an order confirmation with a valid order ID.",
+      actualResult: "Payment API returned HTTP 500 and the checkout process failed. The payment response contained a null transactionId.",
+    },
+    evidence: {
+      logs: `[INFO] Starting checkout test
+[INFO] Product added to cart: SKU-IPHONE-15
+[INFO] Cart total: 79999.00
+[INFO] Payment method: CREDIT_CARD
+[INFO] Sending payment request
+[INFO] POST /api/v1/payments
+[ERROR] Payment API returned status: 500
+[ERROR] Payment processing failed
+[INFO] Order status: PAYMENT_FAILED
+[ERROR] Checkout test failed`,
+      stackTrace: `java.lang.NullPointerException: Cannot invoke "String.trim()" because "transactionId" is null
+    at com.shopsphere.payment.PaymentService.processPayment(PaymentService.java:142)
+    at com.shopsphere.checkout.CheckoutService.completeOrder(CheckoutService.java:287)
+    at com.shopsphere.api.PaymentController.process(PaymentController.java:96)
+    at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+
+Caused by: Payment response did not contain transactionId`,
+      apiResponse: `{
+  "status": 500,
+  "error": "Internal Server Error",
+  "message": "Payment processing failed",
+  "paymentStatus": "FAILED",
+  "transactionId": null,
+  "timestamp": "2026-08-16T08:32:41Z"
+}`,
+      consoleLogs: "",
+    },
+  },
+
+  bankingLoginFailure: {
+    testInfo: {
+      testName: "Verify login with valid credentials",
+      testId: "TC-AUTH-007",
+      application: "SecureBank Online",
+      environment: "Staging",
+      browser: "Chrome",
+      buildVersion: "2026.08.16.205",
+      executionTime: new Date().toISOString(),
+    },
+    testDetails: {
+      description: "Verify that a registered banking customer can log in successfully using valid credentials and access the account dashboard.",
+      steps:
+        "1. Open the SecureBank login page.\n2. Enter a registered username.\n3. Enter the correct password.\n4. Click the Login button.\n5. Wait for authentication to complete.\n6. Verify that the customer is redirected to the account dashboard.\n7. Verify that the customer's account information is displayed.",
+      expectedResult: "The user should be authenticated successfully and redirected to the account dashboard.",
+      actualResult: "The login request returned HTTP 401 Unauthorized even though valid test credentials were used.",
+    },
+    evidence: {
+      logs: `[INFO] Starting login test
+[INFO] Username: testuser01
+[INFO] Sending authentication request
+[INFO] POST /api/v2/auth/login
+[INFO] Response received: 401
+[WARN] Authentication failed
+[ERROR] Expected HTTP 200 but received HTTP 401
+[ERROR] Login test failed`,
+      stackTrace: `org.opentest4j.AssertionFailedError:
+Expected: 200
+Actual: 401
+
+    at com.bank.tests.LoginTest.verifySuccessfulLogin(LoginTest.java:87)
+    at com.bank.tests.LoginTest.testValidCredentials(LoginTest.java:52)
+
+Assertion failed: Valid user credentials were rejected`,
+      apiResponse: `{
+  "status": 401,
+  "error": "Unauthorized",
+  "message": "Invalid authentication token",
+  "code": "AUTH_TOKEN_INVALID",
+  "timestamp": "2026-08-16T09:15:22Z"
+}`,
+      consoleLogs: "",
+    },
+  },
+
+  warehouseInventoryTimeout: {
+    testInfo: {
+      testName: "Verify product inventory availability",
+      testId: "TC-INVENTORY-021",
+      application: "SmartWarehouse",
+      environment: "QA",
+      browser: "Chrome",
+      buildVersion: "2026.08.16.118",
+      executionTime: new Date().toISOString(),
+    },
+    testDetails: {
+      description: "Verify that the product inventory service returns the current stock quantity when a valid product ID is requested.",
+      steps:
+        "1. Login to the SmartWarehouse application.\n2. Navigate to the Inventory section.\n3. Search for product SKU-98421.\n4. Request the current inventory information.\n5. Wait for the inventory API response.\n6. Verify that the available quantity is displayed.",
+      expectedResult: "The inventory service should return the current stock quantity within the configured response timeout.",
+      actualResult: "The inventory API did not respond within 3000 milliseconds. The request timed out after two retry attempts and returned HTTP 504.",
+    },
+    evidence: {
+      logs: `[INFO] Starting inventory validation
+[INFO] Product ID: SKU-98421
+[INFO] GET /api/v1/inventory/SKU-98421
+[INFO] Request timeout configured: 3000ms
+[WARN] Inventory API did not respond within timeout
+[WARN] Retrying request 1/2
+[WARN] Inventory API did not respond within timeout
+[ERROR] Request failed after 2 retries
+[ERROR] Inventory validation failed`,
+      stackTrace: `java.net.SocketTimeoutException: Read timed out
+
+    at java.net.http/jdk.internal.net.http.HttpClientImpl.send(HttpClientImpl.java:578)
+    at java.net.http/jdk.internal.net.http.HttpClientFacade.send(HttpClientFacade.java:123)
+    at com.warehouse.inventory.InventoryClient.getInventory(InventoryClient.java:74)
+    at com.warehouse.tests.InventoryTest.verifyStock(InventoryTest.java:119)
+
+Caused by:
+java.net.SocketTimeoutException: Read timed out after 3000ms`,
+      apiResponse: `{
+  "status": 504,
+  "error": "Gateway Timeout",
+  "message": "Inventory service did not respond within the configured timeout",
+  "service": "inventory-service",
+  "requestId": "REQ-883421",
+  "timestamp": "2026-08-16T09:42:17Z"
+}`,
+      consoleLogs: "",
+    },
+  },
+
+  rideBookingLogicFailure: {
+    testInfo: {
+      testName: "Verify ride booking confirmation",
+      testId: "TC-RIDE-032",
+      application: "QuickRide",
+      environment: "Staging",
+      browser: "Chrome",
+      buildVersion: "2026.08.16.087",
+      executionTime: new Date().toISOString(),
+    },
+    testDetails: {
+      description: "Verify that a customer can book a ride and that the ride is confirmed after a successful booking request.",
+      steps:
+        "1. Login to QuickRide.\n2. Enter Pune Station as the pickup location.\n3. Enter Hinjewadi Phase 1 as the destination.\n4. Select the standard ride option.\n5. Click \"Book Ride\".\n6. Wait for the booking API response.\n7. Verify that the ride status is CONFIRMED.\n8. Verify that a driver is assigned.",
+      expectedResult: "CONFIRMED",
+      actualResult: "PENDING",
+    },
+    evidence: {
+      logs: `[INFO] Starting ride booking test
+[INFO] Pickup: Pune Station
+[INFO] Destination: Hinjewadi Phase 1
+[INFO] POST /api/v1/rides
+[INFO] Response status: 201
+[INFO] Ride created successfully
+[INFO] Validating ride status
+[ERROR] Expected ride status: CONFIRMED
+[ERROR] Actual ride status: PENDING
+[ERROR] Ride booking test failed`,
+      stackTrace: `org.opentest4j.AssertionFailedError:
+Ride status mismatch
+
+Expected:
+CONFIRMED
+
+Actual:
+PENDING
+
+    at com.ride.tests.BookingTest.verifyRideConfirmation(BookingTest.java:143)
+    at com.ride.tests.BookingTest.createRide(BookingTest.java:98)`,
+      apiResponse: `{
+  "status": 201,
+  "rideId": "RIDE-72891",
+  "rideStatus": "PENDING",
+  "driverAssigned": false,
+  "estimatedArrival": null,
+  "message": "Ride created successfully",
+  "timestamp": "2026-08-16T10:04:32Z"
+}`,
+      consoleLogs: "",
+    },
+  },
+
+  healthcareDatabaseFailure: {
+    testInfo: {
+      testName: "Verify patient registration",
+      testId: "TC-PATIENT-011",
+      application: "MediCare Portal",
+      environment: "QA",
+      browser: "Edge",
+      buildVersion: "2026.08.16.056",
+      executionTime: new Date().toISOString(),
+    },
+    testDetails: {
+      description:
+        "Verify that a new patient can be registered successfully and that the patient information is stored in the healthcare database.",
+      steps:
+        "1. Login to the MediCare Portal.\n2. Navigate to Patient Registration.\n3. Enter the patient's personal information.\n4. Enter contact information.\n5. Enter required medical information.\n6. Click \"Register Patient\".\n7. Verify that the patient record is created.\n8. Search for the newly created patient.\n9. Verify that the patient information is displayed correctly.",
+      expectedResult: "The patient should be registered successfully and the patient record should be stored in the database.",
+      actualResult: "Patient registration failed with HTTP 503. The Patient Service could not establish a connection to the PostgreSQL database.",
+    },
+    evidence: {
+      logs: `[INFO] Starting patient registration test
+[INFO] POST /api/v1/patients
+[INFO] Validating patient information
+[INFO] Saving patient record
+[ERROR] Database connection failed
+[ERROR] Patient registration failed
+[ERROR] HTTP 503 returned by Patient Service`,
+      stackTrace: `org.springframework.jdbc.CannotGetJdbcConnectionException:
+Failed to obtain JDBC Connection
+
+    at org.springframework.jdbc.datasource.DataSourceUtils.getConnection(DataSourceUtils.java:84)
+    at com.healthcare.patient.PatientRepository.save(PatientRepository.java:61)
+    at com.healthcare.patient.PatientService.register(PatientService.java:104)
+
+Caused by:
+java.sql.SQLException: Connection refused
+
+Caused by:
+java.net.ConnectException: Connection refused: database-host:5432`,
+      apiResponse: `{
+  "status": 503,
+  "error": "Service Unavailable",
+  "message": "Patient service is temporarily unavailable",
+  "service": "patient-service",
+  "dependency": "postgresql",
+  "requestId": "REQ-991823",
+  "timestamp": "2026-08-16T10:21:44Z"
+}`,
+      consoleLogs: "",
+    },
+  },
+
+  playwrightAutomationFailure: {
+    testInfo: {
+      testName: "Verify order confirmation banner",
+      testId: "TC-CHECKOUT-019",
+      application: "ShopSphere E-Commerce",
+      environment: "QA",
+      browser: "Chrome",
+      buildVersion: "2026.08.16.142",
+      executionTime: new Date().toISOString(),
+    },
+    testDetails: {
+      description: "Verify that the order confirmation banner is displayed after a customer successfully completes checkout and payment.",
+      steps:
+        "1. Login to ShopSphere.\n2. Add a product to the cart.\n3. Navigate to checkout.\n4. Enter valid shipping information.\n5. Select a valid payment method.\n6. Submit the order.\n7. Wait for the order confirmation page.\n8. Verify that the order confirmation banner is displayed.\n9. Verify that the order ID is displayed.",
+      expectedResult: "After successful order submission, the order confirmation banner should be displayed with the generated order ID.",
+      actualResult:
+        "The order was successfully created and the payment was successful according to the API response, but the automation test could not find the order confirmation banner within 5000 milliseconds.",
+    },
+    evidence: {
+      logs: `[INFO] Starting checkout confirmation test
+[INFO] Order submitted successfully
+[INFO] Waiting for confirmation banner
+[INFO] Locator: .order-confirmation-banner
+[ERROR] Element not found
+[ERROR] Timeout after 5000ms
+[ERROR] Test execution failed`,
+      stackTrace: `playwright._impl._errors.TimeoutError:
+Timeout 5000ms exceeded.
+
+waiting for locator(".order-confirmation-banner")
+
+Call log:
+- waiting for locator(".order-confirmation-banner")
+- locator resolved to 0 elements
+- waiting 5000ms
+- timeout exceeded
+
+    at CheckoutPage.verifyConfirmation(CheckoutPage.ts:87)
+    at checkout.spec.ts:142`,
+      apiResponse: `{
+  "status": 201,
+  "orderId": "ORD-88213",
+  "orderStatus": "CONFIRMED",
+  "paymentStatus": "SUCCESS",
+  "message": "Order submitted successfully"
+}`,
+      consoleLogs: "",
+    },
+  },
 };
 
 function analysisFor(

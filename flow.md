@@ -139,26 +139,37 @@ Follow one real object as it moves through the system, using the built-in ShopSp
 
 ### 4.2 How the Mock engine classifies it (`mock-analyzer.ts`)
 
-Rules run **in this exact order** (first match wins — see the `RULES` array in `mock-analyzer.ts`):
+Rules run **in this exact order** (first match wins — see the `RULES` array in `mock-analyzer.ts`). The set below was expanded to cover the cross-industry scenarios in [test-data/](../test-data/) as well as the original ShopSphere set:
 
 ```mermaid
 flowchart TD
     Start["Combine testDetails + all evidence\ninto one text blob"] --> R1{"HTTP 5xx\nAND NullPointerException/null?"}
-    R1 -- Yes --> Out1["Application Defect · Critical · P1\nConfidence: 94%"]
-    R1 -- No --> R2{"'auth service/server'\nAND unavailable/refused/timeout?"}
-    R2 -- Yes --> Out2["Environment Issue · High · P2\nConfidence: 88%"]
-    R2 -- No --> R3{"Price/total field mismatch\nin expected vs actual?"}
-    R3 -- Yes --> Out3["Application Defect (pricing) · High · P2\nConfidence: 72%"]
-    R3 -- No --> R4{"Timeout AND /api/ call\n(and NOT about a UI element)?"}
-    R4 -- Yes --> Out4["Environment Issue · High · P2\nConfidence: 80%"]
-    R4 -- No --> R5{"'timed out waiting for element'\nor 'stale element'?"}
-    R5 -- Yes --> Out5["Flaky Test · Medium · P3\nConfidence: 70%"]
-    R5 -- No --> R6{"'no such element' /\n'locator not found'?"}
-    R6 -- Yes --> Out6["Test Automation Issue · Medium · P3\nConfidence: 82%"]
-    R6 -- No --> Out7["Insufficient Evidence · Medium · P3\nConfidence: 15-35%\n'Additional logs recommended'"]
+    R1 -- Yes --> Out1["Application Defect · Critical · P1\n~94%"]
+    R1 -- No --> R2{"API response confirms success\nAND UI locator/element timeout?"}
+    R2 -- Yes --> Out2["Test Automation Issue · Medium · P3\n~85%\n(backend succeeded, automation didn't)"]
+    R2 -- No --> R3{"'auth service/server'\nAND unavailable/refused/timeout?"}
+    R3 -- Yes --> Out3["Environment Issue · High · P2\n~88%"]
+    R3 -- No --> R4{"401/Unauthorized\nAND an assertion/invalid-token signal?"}
+    R4 -- Yes --> Out4["Application Defect (tentative)\nMedium · P3 · ~45%\ninsufficient_evidence: true"]
+    R4 -- No --> R5{"Database/JDBC\nAND connection refused?"}
+    R5 -- Yes --> Out5["Environment Issue · Critical · P1\n~87%"]
+    R5 -- No --> R6{"Price/total field mismatch\nin expected vs actual?"}
+    R6 -- Yes --> Out6["Application Defect (pricing) · High · P2\n~72%"]
+    R6 -- No --> R7{"HTTP 2xx\nAND expected/actual state differs?"}
+    R7 -- Yes --> Out7["Application Defect (business logic)\nHigh · P2 · ~75%"]
+    R7 -- No --> R8{"Timeout AND /api/ call\n(and NOT about a UI element)?"}
+    R8 -- Yes --> Out8["Environment Issue · High · P2\n~80%"]
+    R8 -- No --> R9{"'waiting for element/locator'\nor 'stale element'?"}
+    R9 -- Yes --> Out9["Flaky Test · Medium · P3\n~70%"]
+    R9 -- No --> R10{"'no such element' /\n'locator not found'?"}
+    R10 -- Yes --> Out10["Test Automation Issue · Medium · P3\n~82%"]
+    R10 -- No --> Out11["Insufficient Evidence · Medium · P3\n15-35%\n'Additional logs recommended'"]
 
     style Out1 fill:#fee2e2,stroke:#dc2626
+    style Out2 fill:#dcfce7,stroke:#16a34a
 ```
+
+Rule **R2** (checked second, right after the payment defect) is the most interesting one: it specifically requires *both* a success signal in the API response *and* a UI timeout, so it correctly attributes scenario 6 in [test-data/](../test-data/) to the automation rather than the application — proving the engine reasons about the *relationship* between evidence, not just keyword presence. See `server/tests/mock-analyzer.test.ts` for the regression tests locking in every scenario's classification.
 
 The ShopSphere payload hits rule **R1** first (rules are checked in order, most specific first — see `RULES` array in `mock-analyzer.ts`), producing:
 
