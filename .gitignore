@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+*.log
+.devlog.txt
+.DS_Store
+coverage/
+data/*.json
+!data/.gitkeep
